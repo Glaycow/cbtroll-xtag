@@ -1,5 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { Card, Draw, Match, Player, Role, Standing, Winner } from './tournament.models';
+import { Card, Draw, Elo, Match, Player, Role, Standing, Winner } from './tournament.models';
 
 export const ROLES: Role[] = ['Topo', 'Selva', 'Meio', 'Atirador', 'Suporte'];
 export const PLAYERS_PER_MATCH = 10;
@@ -45,10 +45,10 @@ export class TournamentService {
     );
   });
 
-  addPlayer(nome: string, riot = ''): void {
+  addPlayer(nome: string, riot = '', elo?: Elo): void {
     const name = nome.trim();
     if (!name) return;
-    this.players.update(list => [...list, { id: uid(), nome: name, riot: riot.trim() }]);
+    this.players.update(list => [...list, { id: uid(), nome: name, riot: riot.trim(), elo }]);
   }
 
   removePlayer(id: string): void {

@@ -115,10 +115,14 @@
       </div>
 
       <div class="form">
-        <input class="in" #pn placeholder="Nome do jogador" (keyup.enter)="addPlayer(pn, pr)">
-        <input class="in" #pr placeholder="Riot ID (opcional)" (keyup.enter)="addPlayer(pn, pr)">
+        <input class="in" #pr placeholder="Riot ID (Nome#TAG)" (keyup.enter)="addPlayer(pn, pr)">
+        <input class="in" #pn placeholder="Nome (sem Riot ID)" (keyup.enter)="addPlayer(pn, pr)">
         <button class="btn" (click)="addPlayer(pn, pr)">Cadastrar</button>
       </div>
+
+      @if (addMsg) {
+        <p class="notice">{{ addMsg }}</p>
+      }
 
       <div class="table-wrap">
         <table class="table">
@@ -139,6 +143,7 @@
                 <td>
                   <span class="pname">{{ s.player.nome }}</span>
                   @if (s.player.riot) { <span class="riot">{{ s.player.riot }}</span> }
+                  @if (s.player.elo) { <span class="elo">{{ eloLabel(s.player.elo) }}</span> }
                 </td>
                 <td class="c"><span class="pts">{{ s.points }}</span></td>
                 <td class="c num win">{{ s.wins }}</td>

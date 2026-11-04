@@ -1,6 +1,8 @@
 import { Component, computed, inject } from '@angular/core';
 import { TournamentService } from './tournament/tournament.service';
-import { Match, Role, Winner } from './tournament/tournament.models';
+import { Elo, Match, Role, Winner } from './tournament/tournament.models';
+
+const REGIAO = 'br1';
 
 const ROLE_KEY: Record<string, string> = {
   Topo: 'top',
@@ -27,6 +29,7 @@ export class App {
   readonly t = inject(TournamentService);
 
   drawMsg = '';
+  addMsg = '';
 
   readonly bench = computed(() => {
     const d = this.t.current();
@@ -64,11 +67,49 @@ export class App {
     return i < 3 && this.t.matches().length ? `g${i + 1}` : '';
   }
 
-  addPlayer(nome: HTMLInputElement, riot: HTMLInputElement): void {
-    this.t.addPlayer(nome.value, riot.value);
-    nome.value = '';
-    riot.value = '';
-    nome.focus();
+  async addPlayer(nomeEl: HTMLInputElement, riotEl: HTMLInputElement): Promise<void> {
+    const riot = riotEl.value.trim();
+    this.addMsg = '';
+    if (riot) {
+      if (!riot.includes('#')) {
+        this.addMsg = 'Riot ID inválido. Use o formato Nome#TAG.';
+        return;
+      }
+      this.addMsg = 'Buscando na Riot…';
+      const info = await this.fetchRiot(riot);
+      if (!info) {
+        this.addMsg = 'Riot ID não encontrado.';
+        return;
+      }
+      this.t.addPlayer(info.nome, info.riotId, info.elo);
+    } else {
+      this.t.addPlayer(nomeEl.value);
+    }
+    nomeEl.value = '';
+    riotEl.value = '';
+    this.addMsg = '';
+    riotEl.focus();
+  }
+
+  private async fetchRiot(riotId: string): Promise<{ nome: string; riotId: string; elo: Elo } | null> {
+    try {
+      const r = await fetch(`/api/elo?riotId=${encodeURIComponent(riotId)}&regiao=${REGIAO}`);
+      if (!r.ok) return null;
+      const j = await r.json();
+      return {
+        nome: j.gameName,
+        riotId: `${j.gameName}#${j.tagLine}`,
+        elo: { tier: j.tier, rank: j.rank, lp: j.lp, vitorias: j.vitorias, derrotas: j.derrotas },
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  eloLabel(e: Elo): string {
+    if (!e.tier) return 'Sem ranqueada solo';
+    const rank = e.rank ? ` ${e.rank}` : '';
+    return `${e.tier}${rank} · ${e.lp ?? 0} PDL · ${e.vitorias}V ${e.derrotas}D`;
   }
 
   addCard(nome: HTMLInputElement, desc: HTMLInputElement): void {
