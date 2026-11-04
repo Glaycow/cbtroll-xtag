@@ -1,0 +1,222 @@
+<div class="shell">
+
+  <header class="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-in">
+      <p class="eyebrow">Campeonato entre amigos · 10 jogadores</p>
+      <h1 class="brand">CBLOW <span>XTAG</span></h1>
+      <div class="rule" aria-hidden="true"><i></i><b></b><i></i></div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-v">{{ t.players().length }}</span>
+          <span class="stat-l">Jogadores</span>
+        </div>
+        <div class="stat">
+          <span class="stat-v">{{ t.cards().length }}</span>
+          <span class="stat-l">Cartas</span>
+        </div>
+        <div class="stat">
+          <span class="stat-v">{{ t.matches().length }}</span>
+          <span class="stat-l">Partidas</span>
+        </div>
+        <div class="stat">
+          <span class="stat-v">{{ leader() }}</span>
+          <span class="stat-l">Líder</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- NOVA PARTIDA -->
+  <section class="panel panel--feature">
+    <div class="panel-head">
+      <h2>Nova partida</h2>
+      <div class="actions">
+        <button class="btn btn--gold" (click)="draw()">Sortear times e carta</button>
+      </div>
+    </div>
+
+    @if (drawMsg) {
+      <p class="notice">{{ drawMsg }}</p>
+    }
+
+    @if (t.current(); as d) {
+      <div class="draft">
+        <div class="draft-card">
+          <span class="draft-card-tag">Carta da partida</span>
+          <strong class="draft-card-name">{{ d.card.nome }}</strong>
+          <span class="draft-card-desc">{{ d.card.desc }}</span>
+        </div>
+
+        <div class="teams">
+          <div class="team team--blue">
+            <div class="team-head">
+              <span class="team-dot"></span>
+              <h3>Time 1</h3>
+              <span class="team-sub">Lado azul</span>
+            </div>
+            <ul class="slots">
+              @for (id of d.teamA; track id) {
+                <li class="slot">
+                  <span class="role" [class]="'role role--' + roleKey(d.roles[id])">
+                    <i>{{ roleIcon(d.roles[id]) }}</i>{{ d.roles[id] }}
+                  </span>
+                  <select class="slot-sel" (change)="swap(id, $any($event.target).value)">
+                    <option value="">{{ name(id) }}</option>
+                    @for (b of bench(); track b.id) {
+                      <option [value]="b.id">↔ {{ b.nome }}</option>
+                    }
+                  </select>
+                </li>
+              }
+            </ul>
+            <button class="btn btn--win btn--blue" (click)="save('A')">Time 1 venceu</button>
+          </div>
+
+          <div class="versus" aria-hidden="true"><span>VS</span></div>
+
+          <div class="team team--red">
+            <div class="team-head">
+              <span class="team-dot"></span>
+              <h3>Time 2</h3>
+              <span class="team-sub">Lado vermelho</span>
+            </div>
+            <ul class="slots">
+              @for (id of d.teamB; track id) {
+                <li class="slot">
+                  <span class="role" [class]="'role role--' + roleKey(d.roles[id])">
+                    <i>{{ roleIcon(d.roles[id]) }}</i>{{ d.roles[id] }}
+                  </span>
+                  <select class="slot-sel" (change)="swap(id, $any($event.target).value)">
+                    <option value="">{{ name(id) }}</option>
+                    @for (b of bench(); track b.id) {
+                      <option [value]="b.id">↔ {{ b.nome }}</option>
+                    }
+                  </select>
+                </li>
+              }
+            </ul>
+            <button class="btn btn--win btn--red" (click)="save('B')">Time 2 venceu</button>
+          </div>
+        </div>
+      </div>
+    } @else {
+      <p class="empty empty--lg">Cadastre os 10 jogadores e as cartas, depois sorteie a partida.</p>
+    }
+  </section>
+
+  <div class="grid">
+    <!-- CLASSIFICAÇÃO -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Classificação</h2>
+        <span class="tag">3 pts por vitória</span>
+      </div>
+
+      <div class="form">
+        <input class="in" #pn placeholder="Nome do jogador" (keyup.enter)="addPlayer(pn, pr)">
+        <input class="in" #pr placeholder="Riot ID (opcional)" (keyup.enter)="addPlayer(pn, pr)">
+        <button class="btn" (click)="addPlayer(pn, pr)">Cadastrar</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="c">#</th>
+              <th>Jogador</th>
+              <th class="c">Pts</th>
+              <th class="c">V</th>
+              <th class="c">D</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of t.standings(); track s.player.id; let i = $index) {
+              <tr [class.top]="i < 3">
+                <td class="c"><span class="rank" [class]="'rank ' + rankClass(i)">{{ i + 1 }}</span></td>
+                <td>
+                  <span class="pname">{{ s.player.nome }}</span>
+                  @if (s.player.riot) { <span class="riot">{{ s.player.riot }}</span> }
+                </td>
+                <td class="c"><span class="pts">{{ s.points }}</span></td>
+                <td class="c num win">{{ s.wins }}</td>
+                <td class="c num loss">{{ s.losses }}</td>
+                <td class="c"><button class="x" title="Remover" (click)="t.removePlayer(s.player.id)">×</button></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6"><p class="empty">Nenhum jogador cadastrado</p></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CARTAS -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Cartas</h2>
+        <span class="tag">não repete por 3 partidas</span>
+      </div>
+
+      <div class="form">
+        <input class="in" #cn placeholder="Nome da carta">
+        <input class="in grow" #cd placeholder="Efeito" (keyup.enter)="addCard(cn, cd)">
+        <button class="btn" (click)="addCard(cn, cd)">Adicionar</button>
+        <button class="btn btn--ghost" (click)="t.seedCards()">Padrão</button>
+      </div>
+
+      <ul class="cards">
+        @for (c of t.cards(); track c.id) {
+          <li class="mod" [class.cooling]="isCooling(c.id)">
+            <div class="mod-top">
+              <strong>{{ c.nome }}</strong>
+              @if (isCooling(c.id)) { <span class="cool">em descanso</span> }
+              <button class="x" title="Remover" (click)="t.removeCard(c.id)">×</button>
+            </div>
+            <p class="mod-desc">{{ c.desc }}</p>
+          </li>
+        } @empty {
+          <li><p class="empty">Nenhuma carta cadastrada</p></li>
+        }
+      </ul>
+    </section>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Histórico</h2>
+      <span class="tag">{{ t.matches().length }} de 10 partidas</span>
+    </div>
+
+    <ol class="history">
+      @for (m of matchesReversed(); track m.id; let i = $index) {
+        <li class="match">
+          <div class="match-head">
+            <span class="match-n">Partida {{ t.matches().length - i }}</span>
+            <span class="match-card">{{ m.card.nome }}</span>
+            <button class="x" title="Excluir" (click)="t.removeMatch(m.id)">×</button>
+          </div>
+          <div class="match-body">
+            <div class="side" [class.won]="m.winner === 'A'">
+              <span class="side-l">Time 1 · {{ winnerLabel(m, 'A') }}</span>
+              <span class="side-p">{{ teamNames(m.teamA) }}</span>
+            </div>
+            <div class="side" [class.won]="m.winner === 'B'">
+              <span class="side-l">Time 2 · {{ winnerLabel(m, 'B') }}</span>
+              <span class="side-p">{{ teamNames(m.teamB) }}</span>
+            </div>
+          </div>
+        </li>
+      } @empty {
+        <li><p class="empty">Nenhuma partida registrada</p></li>
+      }
+    </ol>
+  </section>
+
+  <footer class="foot">
+    Fase de pontos · 10 partidas Bo1 · final Bo3
+  </footer>
+</div>
