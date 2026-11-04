@@ -24,6 +24,51 @@ const shuffle = <T>(arr: T[]): T[] => {
   return a;
 };
 
+const TIER_BASE: Record<string, number> = {
+  IRON: 0, BRONZE: 400, SILVER: 800, GOLD: 1200, PLATINUM: 1600, EMERALD: 2000,
+  DIAMOND: 2400, MASTER: 2800, GRANDMASTER: 2800, CHALLENGER: 2800,
+};
+const DIV_BONUS: Record<string, number> = { IV: 0, III: 100, II: 200, I: 300 };
+export const UNRANKED_SCORE = 800;
+
+/** Pontuação numérica do elo solo: tier + divisão + PDL. Sem ranqueada = UNRANKED_SCORE. */
+export const eloScore = (p: Player): number => {
+  const e = p.elo;
+  if (!e?.tier) return UNRANKED_SCORE;
+  const base = TIER_BASE[e.tier] ?? UNRANKED_SCORE;
+  const div = DIV_BONUS[e.rank ?? ''] ?? 0;
+  return base + div + (e.lp ?? 0);
+};
+
+const combinations = (n: number, k: number, start = 0, cur: number[] = [], out: number[][] = []): number[][] => {
+  if (cur.length === k) { out.push([...cur]); return out; }
+  for (let i = start; i < n; i++) {
+    cur.push(i);
+    combinations(n, k, i + 1, cur, out);
+    cur.pop();
+  }
+  return out;
+};
+
+/** Divide os jogadores em 2 times com a menor diferença de elo; empates são sorteados. */
+export const balancedSplit = (sel: Player[]): { A: Player[]; B: Player[] } => {
+  const total = sel.reduce((s, p) => s + eloScore(p), 0);
+  let best = Infinity;
+  let options: number[][] = [];
+  for (const comb of combinations(sel.length, sel.length / 2)) {
+    if (!comb.includes(0)) continue; // evita duplicar o mesmo corte com os times invertidos
+    const sumA = comb.reduce((s, i) => s + eloScore(sel[i]), 0);
+    const diff = Math.abs(2 * sumA - total);
+    if (diff < best) { best = diff; options = [comb]; }
+    else if (diff === best) options.push(comb);
+  }
+  const pick = options[Math.floor(Math.random() * options.length)];
+  return {
+    A: pick.map(i => sel[i]),
+    B: sel.filter((_, i) => !pick.includes(i)),
+  };
+};
+
 @Injectable({ providedIn: 'root' })
 export class TournamentService {
   readonly players = signal<Player[]>([]);
@@ -84,17 +129,18 @@ export class TournamentService {
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  /** Sorteia 10 jogadores em 2 times de 5, com uma rota única por time e uma carta. */
+  /** Sorteia 10 jogadores em 2 times de 5 equilibrados por elo, com rota única por time e uma carta. */
   draw(): Draw | null {
     const players = this.players();
     if (players.length < PLAYERS_PER_MATCH) return null;
     const card = this.pickCard();
     if (!card) return null;
     const sel = shuffle(players).slice(0, PLAYERS_PER_MATCH);
+    const { A, B } = balancedSplit(sel);
     const rA = shuffle(ROLES), rB = shuffle(ROLES);
     const roles: Record<string, Role> = {};
-    const teamA = sel.slice(0, 5).map((p, i) => { roles[p.id] = rA[i]; return p.id; });
-    const teamB = sel.slice(5).map((p, i) => { roles[p.id] = rB[i]; return p.id; });
+    const teamA = A.map((p, i) => { roles[p.id] = rA[i]; return p.id; });
+    const teamB = B.map((p, i) => { roles[p.id] = rB[i]; return p.id; });
     const draw: Draw = { teamA, teamB, roles, card };
     this.current.set(draw);
     return draw;
