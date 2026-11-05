@@ -26,6 +26,11 @@
         </div>
       </div>
     </div>
+    <div class="hero-actions">
+      <button class="btn btn--gold" (click)="saveNow()">Salvar</button>
+      <button class="btn btn--ghost" (click)="reset()">Limpar tudo</button>
+      @if (savedMsg) { <span class="tag">{{ savedMsg }}</span> }
+    </div>
   </header>
 
   <!-- NOVA PARTIDA -->

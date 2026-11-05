@@ -492,3 +492,13 @@
   background: linear-gradient(180deg, var(--gold-hi), var(--gold));
   border-color: var(--gold-hi);
 }
+
+.hero-actions {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}

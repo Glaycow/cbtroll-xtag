@@ -1,9 +1,10 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, effect } from '@angular/core';
 import { Card, Draw, Elo, Match, Player, Role, Standing, Winner } from './tournament.models';
 
 export const ROLES: Role[] = ['Topo', 'Selva', 'Meio', 'Atirador', 'Suporte'];
 export const PLAYERS_PER_MATCH = 10;
 export const CARD_COOLDOWN = 3;
+const STORAGE_KEY = 'cbtroll-xtag:v1';
 
 export const DEFAULT_CARDS: Omit<Card, 'id'>[] = [
   { nome: 'Ban extra', desc: 'Cada time bane 1 campeão a mais' },
@@ -75,6 +76,49 @@ export class TournamentService {
   readonly cards = signal<Card[]>([]);
   readonly matches = signal<Match[]>([]);
   readonly current = signal<Draw | null>(null);
+
+  constructor() {
+    this.load();
+    effect(() => this.persist(this.snapshot()));
+  }
+
+  /** Grava no navegador. Também roda automaticamente a cada mudança. */
+  saveNow(): void {
+    this.persist(this.snapshot());
+  }
+
+  reset(): void {
+    this.players.set([]);
+    this.cards.set([]);
+    this.matches.set([]);
+    this.current.set(null);
+  }
+
+  private snapshot() {
+    return { players: this.players(), cards: this.cards(), matches: this.matches(), current: this.current() };
+  }
+
+  private persist(data: unknown): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      /* armazenamento indisponível */
+    }
+  }
+
+  private load(): void {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (Array.isArray(s.players)) this.players.set(s.players);
+      if (Array.isArray(s.cards)) this.cards.set(s.cards);
+      if (Array.isArray(s.matches)) this.matches.set(s.matches);
+      if (s.current) this.current.set(s.current);
+    } catch {
+      /* dados corrompidos: começa vazio */
+    }
+  }
 
   readonly standings = computed<Standing[]>(() => {
     const map = new Map<string, Standing>();

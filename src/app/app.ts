@@ -106,6 +106,20 @@ export class App {
     }
   }
 
+  savedMsg = '';
+
+  saveNow(): void {
+    this.t.saveNow();
+    this.savedMsg = `Salvo às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+
+  reset(): void {
+    if (confirm('Apagar jogadores, cartas e partidas salvos?')) {
+      this.t.reset();
+      this.savedMsg = '';
+    }
+  }
+
   eloLabel(e: Elo): string {
     if (!e.tier) return 'Sem ranqueada solo';
     const rank = e.rank ? ` ${e.rank}` : '';
