@@ -129,7 +129,7 @@ export class TournamentService {
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  /** Sorteia 10 jogadores em 2 times de 5 equilibrados por elo, com rota única por time e uma carta. */
+  /** Sorteia 10 jogadores em 2 times de 5 equilibrados por elo, com rota única, capitão aleatório por time e uma carta. */
   draw(): Draw | null {
     const players = this.players();
     if (players.length < PLAYERS_PER_MATCH) return null;
@@ -141,7 +141,8 @@ export class TournamentService {
     const roles: Record<string, Role> = {};
     const teamA = A.map((p, i) => { roles[p.id] = rA[i]; return p.id; });
     const teamB = B.map((p, i) => { roles[p.id] = rB[i]; return p.id; });
-    const draw: Draw = { teamA, teamB, roles, card };
+    const pickOne = (ids: string[]) => ids[Math.floor(Math.random() * ids.length)];
+    const draw: Draw = { teamA, teamB, roles, card, captainA: pickOne(teamA), captainB: pickOne(teamB) };
     this.current.set(draw);
     return draw;
   }
@@ -157,15 +158,6 @@ export class TournamentService {
     this.current.set({ ...d, teamA: sw(d.teamA), teamB: sw(d.teamB), roles, captainA: cap(d.captainA), captainB: cap(d.captainB) });
   }
 
-  /** Define o capitão do time; clicar no capitão atual remove a função. */
-  setCaptain(side: 'A' | 'B', id: string): void {
-    const d = this.current();
-    if (!d) return;
-    const next = side === 'A'
-      ? { ...d, captainA: d.captainA === id ? undefined : id }
-      : { ...d, captainB: d.captainB === id ? undefined : id };
-    this.current.set(next);
-  }
 
   saveMatch(winner: Winner): void {
     const d = this.current();

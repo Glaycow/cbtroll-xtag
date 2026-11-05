@@ -487,7 +487,6 @@
   cursor: pointer;
   transition: all 0.15s;
 }
-.cap:hover { color: var(--gold); border-color: var(--gold-dim); }
 .cap.on {
   color: #1a1206;
   background: linear-gradient(180deg, var(--gold-hi), var(--gold));
