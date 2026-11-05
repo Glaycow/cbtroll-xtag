@@ -68,6 +68,7 @@
                       <option [value]="b.id">↔ {{ b.nome }}</option>
                     }
                   </select>
+                <button type="button" class="cap" title="Capitão" [class.on]="d.captainA === id" (click)="setCaptain('A', id)">♛</button>
                 </li>
               }
             </ul>
@@ -94,6 +95,7 @@
                       <option [value]="b.id">↔ {{ b.nome }}</option>
                     }
                   </select>
+                <button type="button" class="cap" title="Capitão" [class.on]="d.captainB === id" (click)="setCaptain('B', id)">♛</button>
                 </li>
               }
             </ul>

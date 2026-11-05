@@ -27,6 +27,8 @@ export interface Draw {
   teamB: string[];
   roles: Record<string, Role>;
   card: Card;
+  captainA?: string;
+  captainB?: string;
 }
 
 export interface Match extends Draw {

@@ -106,6 +106,10 @@ export class App {
     }
   }
 
+  setCaptain(side: 'A' | 'B', id: string): void {
+    this.t.setCaptain(side, id);
+  }
+
   eloLabel(e: Elo): string {
     if (!e.tier) return 'Sem ranqueada solo';
     const rank = e.rank ? ` ${e.rank}` : '';

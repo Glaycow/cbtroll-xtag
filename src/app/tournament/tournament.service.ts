@@ -153,7 +153,18 @@ export class TournamentService {
     const sw = (arr: string[]) => arr.map(x => (x === oldId ? newId : x));
     const roles = { ...d.roles, [newId]: d.roles[oldId] };
     delete roles[oldId];
-    this.current.set({ ...d, teamA: sw(d.teamA), teamB: sw(d.teamB), roles });
+    const cap = (c?: string) => (c === oldId ? newId : c);
+    this.current.set({ ...d, teamA: sw(d.teamA), teamB: sw(d.teamB), roles, captainA: cap(d.captainA), captainB: cap(d.captainB) });
+  }
+
+  /** Define o capitão do time; clicar no capitão atual remove a função. */
+  setCaptain(side: 'A' | 'B', id: string): void {
+    const d = this.current();
+    if (!d) return;
+    const next = side === 'A'
+      ? { ...d, captainA: d.captainA === id ? undefined : id }
+      : { ...d, captainB: d.captainB === id ? undefined : id };
+    this.current.set(next);
   }
 
   saveMatch(winner: Winner): void {

@@ -281,7 +281,7 @@
 .slots { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .slot {
   display: grid;
-  grid-template-columns: 104px 1fr;
+  grid-template-columns: 104px 1fr auto;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
@@ -466,9 +466,30 @@
   .shell { padding: 0 14px 48px; }
   .hero { padding: 36px 8px 28px; }
   .stats { grid-template-columns: repeat(2, 1fr); }
-  .slot { grid-template-columns: 96px 1fr; }
+  .slot { grid-template-columns: 96px 1fr auto; }
   .match-body { grid-template-columns: 1fr; }
   .side + .side { border-left: 0; border-top: 1px solid var(--line); }
 }
 
 .elo { display: block; font-size: 11px; color: var(--gold); }
+
+.cap {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--fg-3);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cap:hover { color: var(--gold); border-color: var(--gold-dim); }
+.cap.on {
+  color: #1a1206;
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  border-color: var(--gold-hi);
+}
