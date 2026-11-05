@@ -33,6 +33,12 @@
     </div>
   </header>
 
+  <nav class="tabs">
+    <button class="tab" [class.on]="tab === 'torneio'" (click)="tab = 'torneio'">Torneio</button>
+    <button class="tab" [class.on]="tab === 'historico'" (click)="tab = 'historico'">Histórico</button>
+  </nav>
+
+  @if (tab === 'torneio') {
   <!-- NOVA PARTIDA -->
   <section class="panel panel--feature">
     <div class="panel-head">
@@ -196,37 +202,58 @@
     </section>
   </div>
 
-  <!-- HISTÓRICO -->
-  <section class="panel">
-    <div class="panel-head">
-      <h2>Histórico</h2>
-      <span class="tag">{{ t.matches().length }} de 10 partidas</span>
-    </div>
+  }
 
-    <ol class="history">
-      @for (m of matchesReversed(); track m.id; let i = $index) {
-        <li class="match">
-          <div class="match-head">
-            <span class="match-n">Partida {{ t.matches().length - i }}</span>
-            <span class="match-card">{{ m.card.nome }}</span>
-            <button class="x" title="Excluir" (click)="t.removeMatch(m.id)">×</button>
-          </div>
-          <div class="match-body">
-            <div class="side" [class.won]="m.winner === 'A'">
-              <span class="side-l">Time 1 · {{ winnerLabel(m, 'A') }}</span>
-              <span class="side-p">{{ teamNames(m.teamA) }}</span>
+  @if (tab === 'historico') {
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Histórico de partidas</h2>
+        <span class="tag">{{ t.matches().length }} partidas</span>
+      </div>
+
+      <ol class="history">
+        @for (m of matchesReversed(); track m.id; let i = $index) {
+          <li class="match">
+            <div class="match-head">
+              <span class="match-n">Partida {{ t.matches().length - i }}</span>
+              <span class="match-card">{{ m.card.nome }}</span>
+              <span class="match-date">{{ fmtDate(m.ts) }}</span>
+              <button class="x" title="Excluir" (click)="t.removeMatch(m.id)">×</button>
             </div>
-            <div class="side" [class.won]="m.winner === 'B'">
-              <span class="side-l">Time 2 · {{ winnerLabel(m, 'B') }}</span>
-              <span class="side-p">{{ teamNames(m.teamB) }}</span>
+            <p class="match-desc">{{ m.card.desc }}</p>
+            <div class="match-body">
+              <div class="side" [class.won]="m.winner === 'A'">
+                <span class="side-l">Time 1 · {{ winnerLabel(m, 'A') }}</span>
+                <ul class="side-list">
+                  @for (id of m.teamA; track id) {
+                    <li>
+                      <span class="role" [class]="'role role--' + roleKey(m.roles[id])"><i>{{ roleIcon(m.roles[id]) }}</i>{{ m.roles[id] }}</span>
+                      <span class="side-name">{{ name(id) }}</span>
+                      @if (m.captainA === id) { <span class="cap on" title="Capitão">♛</span> }
+                    </li>
+                  }
+                </ul>
+              </div>
+              <div class="side" [class.won]="m.winner === 'B'">
+                <span class="side-l">Time 2 · {{ winnerLabel(m, 'B') }}</span>
+                <ul class="side-list">
+                  @for (id of m.teamB; track id) {
+                    <li>
+                      <span class="role" [class]="'role role--' + roleKey(m.roles[id])"><i>{{ roleIcon(m.roles[id]) }}</i>{{ m.roles[id] }}</span>
+                      <span class="side-name">{{ name(id) }}</span>
+                      @if (m.captainB === id) { <span class="cap on" title="Capitão">♛</span> }
+                    </li>
+                  }
+                </ul>
+              </div>
             </div>
-          </div>
-        </li>
-      } @empty {
-        <li><p class="empty">Nenhuma partida registrada</p></li>
-      }
-    </ol>
-  </section>
+          </li>
+        } @empty {
+          <li><p class="empty">Nenhuma partida registrada</p></li>
+        }
+      </ol>
+    </section>
+  }
 
   <footer class="foot">
     Fase de pontos · 10 partidas Bo1 · final Bo3

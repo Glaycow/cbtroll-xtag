@@ -120,6 +120,12 @@ export class App {
     }
   }
 
+  tab: 'torneio' | 'historico' = 'torneio';
+
+  fmtDate(ts: number): string {
+    return new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
   eloLabel(e: Elo): string {
     if (!e.tier) return 'Sem ranqueada solo';
     const rank = e.rank ? ` ${e.rank}` : '';
