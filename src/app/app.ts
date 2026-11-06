@@ -1,6 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { TournamentService } from './tournament/tournament.service';
-import { Elo, Match, Role, Winner } from './tournament/tournament.models';
+import { Elo, Match, PlayerStats, PlayerTotals, Role, Winner } from './tournament/tournament.models';
 
 const REGIAO = 'br1';
 
@@ -120,7 +120,27 @@ export class App {
     }
   }
 
-  tab: 'torneio' | 'historico' = 'torneio';
+  tab: 'torneio' | 'historico' | 'estatisticas' = 'torneio';
+
+  stat(m: Match, id: string, f: keyof PlayerStats): number {
+    return m.stats?.[id]?.[f] ?? 0;
+  }
+
+  setStat(matchId: string, id: string, f: keyof PlayerStats, v: string): void {
+    this.t.setStat(matchId, id, f, Number(v) || 0);
+  }
+
+  best(f: keyof PlayerStats): PlayerTotals | null {
+    let top: PlayerTotals | null = null;
+    for (const x of this.t.totals()) {
+      if (x[f] > 0 && (!top || x[f] > top[f])) top = x;
+    }
+    return top;
+  }
+
+  kda(x: PlayerTotals): string {
+    return x.d ? ((x.k + x.a) / x.d).toFixed(2) : (x.k + x.a).toFixed(2);
+  }
 
   fmtDate(ts: number): string {
     return new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });

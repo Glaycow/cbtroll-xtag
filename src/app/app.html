@@ -36,6 +36,7 @@
   <nav class="tabs">
     <button class="tab" [class.on]="tab === 'torneio'" (click)="tab = 'torneio'">Torneio</button>
     <button class="tab" [class.on]="tab === 'historico'" (click)="tab = 'historico'">Histórico</button>
+    <button class="tab" [class.on]="tab === 'estatisticas'" (click)="tab = 'estatisticas'">Estatísticas</button>
   </nav>
 
   @if (tab === 'torneio') {
@@ -208,7 +209,7 @@
     <section class="panel">
       <div class="panel-head">
         <h2>Histórico de partidas</h2>
-        <span class="tag">{{ t.matches().length }} partidas</span>
+        <span class="tag">{{ t.matches().length }} partidas · K · D · A · Dano</span>
       </div>
 
       <ol class="history">
@@ -230,6 +231,12 @@
                       <span class="role" [class]="'role role--' + roleKey(m.roles[id])"><i>{{ roleIcon(m.roles[id]) }}</i>{{ m.roles[id] }}</span>
                       <span class="side-name">{{ name(id) }}</span>
                       @if (m.captainA === id) { <span class="cap on" title="Capitão">♛</span> }
+                      <div class="stats-in">
+                        <input type="number" min="0" title="Abates" [value]="stat(m, id, 'k')" (change)="setStat(m.id, id, 'k', $any($event.target).value)">
+                        <input type="number" min="0" title="Mortes" [value]="stat(m, id, 'd')" (change)="setStat(m.id, id, 'd', $any($event.target).value)">
+                        <input type="number" min="0" title="Assistências" [value]="stat(m, id, 'a')" (change)="setStat(m.id, id, 'a', $any($event.target).value)">
+                        <input type="number" min="0" title="Dano" [value]="stat(m, id, 'dano')" (change)="setStat(m.id, id, 'dano', $any($event.target).value)">
+                      </div>
                     </li>
                   }
                 </ul>
@@ -242,6 +249,12 @@
                       <span class="role" [class]="'role role--' + roleKey(m.roles[id])"><i>{{ roleIcon(m.roles[id]) }}</i>{{ m.roles[id] }}</span>
                       <span class="side-name">{{ name(id) }}</span>
                       @if (m.captainB === id) { <span class="cap on" title="Capitão">♛</span> }
+                      <div class="stats-in">
+                        <input type="number" min="0" title="Abates" [value]="stat(m, id, 'k')" (change)="setStat(m.id, id, 'k', $any($event.target).value)">
+                        <input type="number" min="0" title="Mortes" [value]="stat(m, id, 'd')" (change)="setStat(m.id, id, 'd', $any($event.target).value)">
+                        <input type="number" min="0" title="Assistências" [value]="stat(m, id, 'a')" (change)="setStat(m.id, id, 'a', $any($event.target).value)">
+                        <input type="number" min="0" title="Dano" [value]="stat(m, id, 'dano')" (change)="setStat(m.id, id, 'dano', $any($event.target).value)">
+                      </div>
                     </li>
                   }
                 </ul>
@@ -252,6 +265,53 @@
           <li><p class="empty">Nenhuma partida registrada</p></li>
         }
       </ol>
+    </section>
+  }
+
+  @if (tab === 'estatisticas') {
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Estatísticas</h2>
+        <span class="tag">{{ t.matches().length }} partidas</span>
+      </div>
+
+      <div class="leaders">
+        <div class="leader"><span class="leader-l">Mais abates</span><strong>{{ best('k')?.player?.nome ?? '—' }}</strong><span class="leader-v">{{ best('k')?.k ?? 0 }}</span></div>
+        <div class="leader"><span class="leader-l">Mais mortes</span><strong>{{ best('d')?.player?.nome ?? '—' }}</strong><span class="leader-v">{{ best('d')?.d ?? 0 }}</span></div>
+        <div class="leader"><span class="leader-l">Mais assistências</span><strong>{{ best('a')?.player?.nome ?? '—' }}</strong><span class="leader-v">{{ best('a')?.a ?? 0 }}</span></div>
+        <div class="leader"><span class="leader-l">Mais dano</span><strong>{{ best('dano')?.player?.nome ?? '—' }}</strong><span class="leader-v">{{ best('dano')?.dano ?? 0 }}</span></div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Jogador</th>
+              <th class="c">Jogos</th>
+              <th class="c">K</th>
+              <th class="c">D</th>
+              <th class="c">A</th>
+              <th class="c">KDA</th>
+              <th class="c">Dano</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (x of t.totals(); track x.player.id) {
+              <tr>
+                <td>{{ x.player.nome }}</td>
+                <td class="c">{{ x.jogos }}</td>
+                <td class="c num">{{ x.k }}</td>
+                <td class="c num">{{ x.d }}</td>
+                <td class="c num">{{ x.a }}</td>
+                <td class="c num">{{ kda(x) }}</td>
+                <td class="c num">{{ x.dano }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7"><p class="empty">Nenhum jogador cadastrado</p></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </section>
   }
 

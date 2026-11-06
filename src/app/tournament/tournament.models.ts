@@ -31,11 +31,24 @@ export interface Draw {
   captainB?: string;
 }
 
+export interface PlayerStats {
+  k: number;
+  d: number;
+  a: number;
+  dano: number;
+}
+
+export interface PlayerTotals extends PlayerStats {
+  player: Player;
+  jogos: number;
+}
+
 export interface Match extends Draw {
   id: string;
   ts: number;
   cardId: string;
   winner: Winner;
+  stats?: Record<string, PlayerStats>;
 }
 
 export interface Standing {

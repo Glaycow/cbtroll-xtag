@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
-import { Card, Draw, Elo, Match, Player, Role, Standing, Winner } from './tournament.models';
+import { Card, Draw, Elo, Match, Player, PlayerStats, PlayerTotals, Role, Standing, Winner } from './tournament.models';
 
 export const ROLES: Role[] = ['Topo', 'Selva', 'Meio', 'Atirador', 'Suporte'];
 export const PLAYERS_PER_MATCH = 10;
@@ -120,6 +120,19 @@ export class TournamentService {
     }
   }
 
+  readonly totals = computed<PlayerTotals[]>(() => {
+    const map = new Map<string, PlayerTotals>();
+    this.players().forEach(p => map.set(p.id, { player: p, k: 0, d: 0, a: 0, dano: 0, jogos: 0 }));
+    for (const m of this.matches()) {
+      for (const [id, st] of Object.entries(m.stats ?? {})) {
+        const t = map.get(id);
+        if (!t) continue;
+        t.k += st.k; t.d += st.d; t.a += st.a; t.dano += st.dano; t.jogos++;
+      }
+    }
+    return [...map.values()];
+  });
+
   readonly standings = computed<Standing[]>(() => {
     const map = new Map<string, Standing>();
     this.players().forEach(p => map.set(p.id, { player: p, wins: 0, losses: 0, points: 0 }));
@@ -209,6 +222,14 @@ export class TournamentService {
     const match: Match = { ...d, id: uid(), ts: Date.now(), cardId: d.card.id, winner };
     this.matches.update(list => [...list, match]);
     this.current.set(null);
+  }
+
+  setStat(matchId: string, playerId: string, field: keyof PlayerStats, value: number): void {
+    this.matches.update(list => list.map(m => {
+      if (m.id !== matchId) return m;
+      const cur = m.stats?.[playerId] ?? { k: 0, d: 0, a: 0, dano: 0 };
+      return { ...m, stats: { ...(m.stats ?? {}), [playerId]: { ...cur, [field]: Math.max(0, value) } } };
+    }));
   }
 
   removeMatch(id: string): void {
