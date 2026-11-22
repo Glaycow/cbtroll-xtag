@@ -224,7 +224,7 @@
             <p class="match-desc">{{ m.card.desc }}</p>
             <div class="match-body">
               <div class="side" [class.won]="m.winner === 'A'">
-                <span class="side-l">Time 1 · {{ winnerLabel(m, 'A') }}</span>
+                <div class="side-head"><span class="side-l">Time 1 · {{ winnerLabel(m, 'A') }}</span><div class="stats-labels"><span>K</span><span>D</span><span>A</span><span>Dano</span></div></div>
                 <ul class="side-list">
                   @for (id of m.teamA; track id) {
                     <li>
@@ -242,7 +242,7 @@
                 </ul>
               </div>
               <div class="side" [class.won]="m.winner === 'B'">
-                <span class="side-l">Time 2 · {{ winnerLabel(m, 'B') }}</span>
+                <div class="side-head"><span class="side-l">Time 2 · {{ winnerLabel(m, 'B') }}</span><div class="stats-labels"><span>K</span><span>D</span><span>A</span><span>Dano</span></div></div>
                 <ul class="side-list">
                   @for (id of m.teamB; track id) {
                     <li>
