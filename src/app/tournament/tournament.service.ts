@@ -51,19 +51,37 @@ const combinations = (n: number, k: number, start = 0, cur: number[] = [], out: 
   return out;
 };
 
-/** Divide os jogadores em 2 times com a menor diferença de elo; empates são sorteados. */
-export const balancedSplit = (sel: Player[]): { A: Player[]; B: Player[] } => {
+/** Diferença máxima de elo (soma dos times) aceita como equilibrada. */
+export const SPLIT_TOLERANCE = 150;
+
+/**
+ * Divide os jogadores em 2 times equilibrados por elo.
+ * Entre as divisões dentro da tolerância, sorteia uma e evita repetir times das partidas recentes.
+ */
+export const balancedSplit = (sel: Player[], recent: string[][] = []): { A: Player[]; B: Player[] } => {
   const total = sel.reduce((s, p) => s + eloScore(p), 0);
-  let best = Infinity;
-  let options: number[][] = [];
-  for (const comb of combinations(sel.length, sel.length / 2)) {
-    if (!comb.includes(0)) continue; // evita duplicar o mesmo corte com os times invertidos
-    const sumA = comb.reduce((s, i) => s + eloScore(sel[i]), 0);
-    const diff = Math.abs(2 * sumA - total);
-    if (diff < best) { best = diff; options = [comb]; }
-    else if (diff === best) options.push(comb);
-  }
-  const pick = options[Math.floor(Math.random() * options.length)];
+  const key = (ids: string[]) => [...ids].sort().join(',');
+  const recentKeys = new Set(recent.map(key));
+
+  const options = combinations(sel.length, sel.length / 2)
+    .filter(comb => comb.includes(0)) // evita duplicar o mesmo corte com os times invertidos
+    .map(comb => {
+      const sumA = comb.reduce((s, i) => s + eloScore(sel[i]), 0);
+      const idsA = comb.map(i => sel[i].id);
+      const idsB = sel.filter((_, i) => !comb.includes(i)).map(p => p.id);
+      return {
+        comb,
+        diff: Math.abs(2 * sumA - total),
+        repeat: recentKeys.has(key(idsA)) || recentKeys.has(key(idsB)),
+      };
+    });
+
+  const best = Math.min(...options.map(o => o.diff));
+  const close = options.filter(o => o.diff <= best + SPLIT_TOLERANCE);
+  const fresh = close.filter(o => !o.repeat);
+  const pool = fresh.length ? fresh : close;
+  const pick = pool[Math.floor(Math.random() * pool.length)].comb;
+
   return {
     A: pick.map(i => sel[i]),
     B: sel.filter((_, i) => !pick.includes(i)),
@@ -193,7 +211,8 @@ export class TournamentService {
     const card = this.pickCard();
     if (!card) return null;
     const sel = shuffle(players).slice(0, PLAYERS_PER_MATCH);
-    const { A, B } = balancedSplit(sel);
+    const recent = this.matches().slice(-3).flatMap(m => [m.teamA, m.teamB]);
+    const { A, B } = balancedSplit(sel, recent);
     const rA = shuffle(ROLES), rB = shuffle(ROLES);
     const roles: Record<string, Role> = {};
     const teamA = A.map((p, i) => { roles[p.id] = rA[i]; return p.id; });
