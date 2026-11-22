@@ -88,6 +88,35 @@ export const balancedSplit = (sel: Player[], recent: string[][] = []): { A: Play
   };
 };
 
+const permutations = <T>(arr: T[]): T[][] =>
+  arr.length <= 1 ? [arr] : arr.flatMap((x, i) => permutations([...arr.slice(0, i), ...arr.slice(i + 1)]).map(p => [x, ...p]));
+
+/** Quantos jogadores repetiram a rota que já fizeram em alguma partida da janela. */
+const repeats = (roles: Record<string, Role>, window: Match[]): number =>
+  Object.entries(roles).reduce((n, [id, role]) => n + (window.some(m => m.roles[id] === role) ? 1 : 0), 0);
+
+/**
+ * Atribui rotas a cada time. Prioridade: não repetir a rota da partida anterior;
+ * depois, evitar repetir a rota das 2 últimas partidas. Empates são sorteados.
+ */
+export const assignRoles = (teamA: string[], teamB: string[], history: Match[]): Record<string, Role> => {
+  const last1 = history.slice(-1);
+  const last2 = history.slice(-2);
+  let bestScore = Infinity;
+  let ties: Record<string, Role>[] = [];
+  for (const pa of permutations(ROLES)) {
+    for (const pb of permutations(ROLES)) {
+      const roles: Record<string, Role> = {};
+      teamA.forEach((id, i) => { roles[id] = pa[i]; });
+      teamB.forEach((id, i) => { roles[id] = pb[i]; });
+      const score = repeats(roles, last1) * 100 + repeats(roles, last2);
+      if (score < bestScore) { bestScore = score; ties = [roles]; }
+      else if (score === bestScore) ties.push(roles);
+    }
+  }
+  return ties[Math.floor(Math.random() * ties.length)];
+};
+
 @Injectable({ providedIn: 'root' })
 export class TournamentService {
   readonly players = signal<Player[]>([]);
@@ -213,10 +242,9 @@ export class TournamentService {
     const sel = shuffle(players).slice(0, PLAYERS_PER_MATCH);
     const recent = this.matches().slice(-3).flatMap(m => [m.teamA, m.teamB]);
     const { A, B } = balancedSplit(sel, recent);
-    const rA = shuffle(ROLES), rB = shuffle(ROLES);
-    const roles: Record<string, Role> = {};
-    const teamA = A.map((p, i) => { roles[p.id] = rA[i]; return p.id; });
-    const teamB = B.map((p, i) => { roles[p.id] = rB[i]; return p.id; });
+    const teamA = A.map(p => p.id);
+    const teamB = B.map(p => p.id);
+    const roles = assignRoles(teamA, teamB, this.matches());
     const pickOne = (ids: string[]) => ids[Math.floor(Math.random() * ids.length)];
     const draw: Draw = { teamA, teamB, roles, card, captainA: pickOne(teamA), captainB: pickOne(teamB) };
     this.current.set(draw);
