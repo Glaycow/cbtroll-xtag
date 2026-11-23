@@ -156,6 +156,15 @@ export class TournamentService {
     }
   }
 
+  /** Recarrega os campeões e sorteia o draft da partida atual, se ainda não houver. */
+  async retryChampions(): Promise<void> {
+    await this.loadChampions();
+    const d = this.current();
+    if (d && d.card.draft && !d.champions) {
+      this.current.set({ ...d, champions: this.draftChampions(d.roles) });
+    }
+  }
+
   private ensureDraftCard(cards: Card[]): Card[] {
     if (cards.some(c => c.draft)) return cards;
     const draft = DEFAULT_CARDS.find(c => c.draft)!;

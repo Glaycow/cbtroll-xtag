@@ -76,6 +76,10 @@
             <span class="draft-card-desc">{{ d.card.desc }}</span>
           </div>
 
+          @if (d.card.draft && !d.champions) {
+            <p class="notice">Campeões não carregaram. <button class="btn btn--ghost" (click)="t.retryChampions()">Tentar de novo</button></p>
+          }
+
           <div class="teams">
             <div class="team team--blue">
               <div class="team-head">
