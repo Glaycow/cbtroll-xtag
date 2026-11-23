@@ -25,98 +25,127 @@
           <span class="stat-l">Líder</span>
         </div>
       </div>
-    </div>
-    <div class="hero-actions">
-      <button class="btn btn--gold" (click)="saveNow()">Salvar</button>
-      <button class="btn btn--ghost" (click)="reset()">Limpar tudo</button>
-      @if (savedMsg) { <span class="tag">{{ savedMsg }}</span> }
+
+      <div class="hero-actions">
+        <button class="btn btn--gold" (click)="saveNow()">Salvar</button>
+        <button class="btn btn--ghost" (click)="reset()">Limpar tudo</button>
+        @if (savedMsg()) { <span class="tag">{{ savedMsg() }}</span> }
+      </div>
     </div>
   </header>
 
-  <nav class="tabs">
-    <button class="tab" [class.on]="tab === 'torneio'" (click)="tab = 'torneio'">Torneio</button>
-    <button class="tab" [class.on]="tab === 'historico'" (click)="tab = 'historico'">Histórico</button>
-    <button class="tab" [class.on]="tab === 'estatisticas'" (click)="tab = 'estatisticas'">Estatísticas</button>
-  </nav>
-
-  @if (tab === 'torneio') {
-  <!-- NOVA PARTIDA -->
+  <!-- SORTEIO -->
   <section class="panel panel--feature">
     <div class="panel-head">
-      <h2>Nova partida</h2>
+      <h2>Sorteio</h2>
       <div class="actions">
-        <button class="btn btn--gold" (click)="draw()">Sortear times e carta</button>
+        <button class="btn btn--gold" (click)="draw()">Sortear partida</button>
       </div>
     </div>
 
-    @if (drawMsg) {
-      <p class="notice">{{ drawMsg }}</p>
+    @if (drawMsg()) {
+      <p class="notice">{{ drawMsg() }}</p>
     }
 
-    @if (t.current(); as d) {
-      <div class="draft">
-        <div class="draft-card">
-          <span class="draft-card-tag">Carta da partida</span>
-          <strong class="draft-card-name">{{ d.card.nome }}</strong>
-          <span class="draft-card-desc">{{ d.card.desc }}</span>
+    @switch (stage()) {
+      @case ('players') {
+        <div class="pgrid">
+          @for (p of t.players(); track p.id) {
+            <div class="pchip" [class.hot]="spin().includes(p.id)">{{ p.nome }}</div>
+          }
         </div>
-
-        <div class="teams">
-          <div class="team team--blue">
-            <div class="team-head">
-              <span class="team-dot"></span>
-              <h3>Time 1</h3>
-              <span class="team-sub">Lado azul</span>
-            </div>
-            <ul class="slots">
-              @for (id of d.teamA; track id) {
-                <li class="slot">
-                  <span class="role" [class]="'role role--' + roleKey(d.roles[id])">
-                    <i>{{ roleIcon(d.roles[id]) }}</i>{{ d.roles[id] }}
-                  </span>
-                  <select class="slot-sel" (change)="swap(id, $any($event.target).value)">
-                    <option value="">{{ name(id) }}</option>
-                    @for (b of bench(); track b.id) {
-                      <option [value]="b.id">↔ {{ b.nome }}</option>
-                    }
-                  </select>
-                @if (d.captainA === id) { <span class="cap on" title="Capitão">♛</span> }
-                </li>
-              }
-            </ul>
-            <button class="btn btn--win btn--blue" (click)="save('A')">Time 1 venceu</button>
-          </div>
-
-          <div class="versus" aria-hidden="true"><span>VS</span></div>
-
-          <div class="team team--red">
-            <div class="team-head">
-              <span class="team-dot"></span>
-              <h3>Time 2</h3>
-              <span class="team-sub">Lado vermelho</span>
-            </div>
-            <ul class="slots">
-              @for (id of d.teamB; track id) {
-                <li class="slot">
-                  <span class="role" [class]="'role role--' + roleKey(d.roles[id])">
-                    <i>{{ roleIcon(d.roles[id]) }}</i>{{ d.roles[id] }}
-                  </span>
-                  <select class="slot-sel" (change)="swap(id, $any($event.target).value)">
-                    <option value="">{{ name(id) }}</option>
-                    @for (b of bench(); track b.id) {
-                      <option [value]="b.id">↔ {{ b.nome }}</option>
-                    }
-                  </select>
-                @if (d.captainB === id) { <span class="cap on" title="Capitão">♛</span> }
-                </li>
-              }
-            </ul>
-            <button class="btn btn--win btn--red" (click)="save('B')">Time 2 venceu</button>
+      }
+      @case ('card') {
+        <div class="reel">
+          <div class="reel-pin" aria-hidden="true"></div>
+          <div class="reel-strip" [class.go]="reelGo()" [style.transform]="'translateX(' + reelX() + 'px)'">
+            @for (c of reelItems(); track $index) {
+              <div class="rcard" [class.draft]="c.draft">
+                <strong>{{ c.nome }}</strong>
+                <span>{{ c.desc }}</span>
+              </div>
+            }
           </div>
         </div>
-      </div>
-    } @else {
-      <p class="empty empty--lg">Cadastre os 10 jogadores e as cartas, depois sorteie a partida.</p>
+      }
+      @case ('teams') {
+        @if (t.current(); as d) {
+          <div class="draft-card">
+            <span class="draft-card-tag">Carta da partida</span>
+            <strong class="draft-card-name">{{ d.card.nome }}</strong>
+            <span class="draft-card-desc">{{ d.card.desc }}</span>
+          </div>
+
+          <div class="teams">
+            <div class="team team--blue">
+              <div class="team-head">
+                <span class="team-dot"></span>
+                <h3>Time 1</h3>
+                <span class="team-sub">Lado azul</span>
+              </div>
+              <ul class="slots">
+                @for (id of d.teamA; track id; let i = $index) {
+                  <li class="slot" [style.animation-delay]="delay(i)">
+                    @if (d.champions?.[id]; as c) {
+                      <img class="champ" [src]="tile(c.id)" [alt]="c.nome" [style.animation-delay]="delay(i, 350)">
+                    }
+                    <div class="slot-main">
+                      <span class="role" [class]="'role role--' + roleKey(d.roles[id])"><i>{{ roleIcon(d.roles[id]) }}</i>{{ d.roles[id] }}</span>
+                      @if (d.champions?.[id]; as c) {
+                        <span class="champ-name">{{ c.nome }}</span>
+                      }
+                      <select class="slot-sel" (change)="swap(id, $any($event.target).value)">
+                        <option value="">{{ name(id) }}</option>
+                        @for (b of bench(); track b.id) {
+                          <option [value]="b.id">↔ {{ b.nome }}</option>
+                        }
+                      </select>
+                    </div>
+                    @if (d.captainA === id) { <span class="cap on" title="Capitão">♛</span> }
+                  </li>
+                }
+              </ul>
+              <button class="btn btn--win btn--blue" (click)="save('A')">Time 1 venceu</button>
+            </div>
+
+            <div class="versus" aria-hidden="true"><span>VS</span></div>
+
+            <div class="team team--red">
+              <div class="team-head">
+                <span class="team-dot"></span>
+                <h3>Time 2</h3>
+                <span class="team-sub">Lado vermelho</span>
+              </div>
+              <ul class="slots">
+                @for (id of d.teamB; track id; let i = $index) {
+                  <li class="slot" [style.animation-delay]="delay(i + 5)">
+                    @if (d.champions?.[id]; as c) {
+                      <img class="champ" [src]="tile(c.id)" [alt]="c.nome" [style.animation-delay]="delay(i + 5, 350)">
+                    }
+                    <div class="slot-main">
+                      <span class="role" [class]="'role role--' + roleKey(d.roles[id])"><i>{{ roleIcon(d.roles[id]) }}</i>{{ d.roles[id] }}</span>
+                      @if (d.champions?.[id]; as c) {
+                        <span class="champ-name">{{ c.nome }}</span>
+                      }
+                      <select class="slot-sel" (change)="swap(id, $any($event.target).value)">
+                        <option value="">{{ name(id) }}</option>
+                        @for (b of bench(); track b.id) {
+                          <option [value]="b.id">↔ {{ b.nome }}</option>
+                        }
+                      </select>
+                    </div>
+                    @if (d.captainB === id) { <span class="cap on" title="Capitão">♛</span> }
+                  </li>
+                }
+              </ul>
+              <button class="btn btn--win btn--red" (click)="save('B')">Time 2 venceu</button>
+            </div>
+          </div>
+        }
+      }
+      @default {
+        <p class="empty empty--lg">Cadastre os 10 jogadores e as cartas, depois sorteie a partida.</p>
+      }
     }
   </section>
 
@@ -134,8 +163,8 @@
         <button class="btn" (click)="addPlayer(pn, pr)">Cadastrar</button>
       </div>
 
-      @if (addMsg) {
-        <p class="notice">{{ addMsg }}</p>
+      @if (addMsg()) {
+        <p class="notice">{{ addMsg() }}</p>
       }
 
       <div class="table-wrap">
@@ -191,6 +220,7 @@
           <li class="mod" [class.cooling]="isCooling(c.id)">
             <div class="mod-top">
               <strong>{{ c.nome }}</strong>
+              @if (c.draft) { <span class="cool">automático</span> }
               @if (isCooling(c.id)) { <span class="cool">em descanso</span> }
               <button class="x" title="Remover" (click)="t.removeCard(c.id)">×</button>
             </div>
@@ -202,118 +232,6 @@
       </ul>
     </section>
   </div>
-
-  }
-
-  @if (tab === 'historico') {
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Histórico de partidas</h2>
-        <span class="tag">{{ t.matches().length }} partidas · K · D · A · Dano</span>
-      </div>
-
-      <ol class="history">
-        @for (m of matchesReversed(); track m.id; let i = $index) {
-          <li class="match">
-            <div class="match-head">
-              <span class="match-n">Partida {{ t.matches().length - i }}</span>
-              <span class="match-card">{{ m.card.nome }}</span>
-              <span class="match-date">{{ fmtDate(m.ts) }}</span>
-              <button class="x" title="Excluir" (click)="t.removeMatch(m.id)">×</button>
-            </div>
-            <p class="match-desc">{{ m.card.desc }}</p>
-            <div class="match-body">
-              <div class="side" [class.won]="m.winner === 'A'">
-                <div class="side-head"><span class="side-l">Time 1 · {{ winnerLabel(m, 'A') }}</span><div class="stats-labels"><span>K</span><span>D</span><span>A</span><span>Dano</span></div></div>
-                <ul class="side-list">
-                  @for (id of m.teamA; track id) {
-                    <li>
-                      <span class="role" [class]="'role role--' + roleKey(m.roles[id])"><i>{{ roleIcon(m.roles[id]) }}</i>{{ m.roles[id] }}</span>
-                      <span class="side-name">{{ name(id) }}</span>
-                      @if (m.captainA === id) { <span class="cap on" title="Capitão">♛</span> }
-                      <div class="stats-in">
-                        <input type="number" min="0" title="Abates" [value]="stat(m, id, 'k')" (change)="setStat(m.id, id, 'k', $any($event.target).value)">
-                        <input type="number" min="0" title="Mortes" [value]="stat(m, id, 'd')" (change)="setStat(m.id, id, 'd', $any($event.target).value)">
-                        <input type="number" min="0" title="Assistências" [value]="stat(m, id, 'a')" (change)="setStat(m.id, id, 'a', $any($event.target).value)">
-                        <input type="number" min="0" title="Dano" [value]="stat(m, id, 'dano')" (change)="setStat(m.id, id, 'dano', $any($event.target).value)">
-                      </div>
-                    </li>
-                  }
-                </ul>
-              </div>
-              <div class="side" [class.won]="m.winner === 'B'">
-                <div class="side-head"><span class="side-l">Time 2 · {{ winnerLabel(m, 'B') }}</span><div class="stats-labels"><span>K</span><span>D</span><span>A</span><span>Dano</span></div></div>
-                <ul class="side-list">
-                  @for (id of m.teamB; track id) {
-                    <li>
-                      <span class="role" [class]="'role role--' + roleKey(m.roles[id])"><i>{{ roleIcon(m.roles[id]) }}</i>{{ m.roles[id] }}</span>
-                      <span class="side-name">{{ name(id) }}</span>
-                      @if (m.captainB === id) { <span class="cap on" title="Capitão">♛</span> }
-                      <div class="stats-in">
-                        <input type="number" min="0" title="Abates" [value]="stat(m, id, 'k')" (change)="setStat(m.id, id, 'k', $any($event.target).value)">
-                        <input type="number" min="0" title="Mortes" [value]="stat(m, id, 'd')" (change)="setStat(m.id, id, 'd', $any($event.target).value)">
-                        <input type="number" min="0" title="Assistências" [value]="stat(m, id, 'a')" (change)="setStat(m.id, id, 'a', $any($event.target).value)">
-                        <input type="number" min="0" title="Dano" [value]="stat(m, id, 'dano')" (change)="setStat(m.id, id, 'dano', $any($event.target).value)">
-                      </div>
-                    </li>
-                  }
-                </ul>
-              </div>
-            </div>
-          </li>
-        } @empty {
-          <li><p class="empty">Nenhuma partida registrada</p></li>
-        }
-      </ol>
-    </section>
-  }
-
-  @if (tab === 'estatisticas') {
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Estatísticas</h2>
-        <span class="tag">{{ t.matches().length }} partidas</span>
-      </div>
-
-      <div class="leaders">
-        <div class="leader"><span class="leader-l">Mais abates</span><strong>{{ best('k')?.player?.nome ?? '—' }}</strong><span class="leader-v">{{ best('k')?.k ?? 0 }}</span></div>
-        <div class="leader"><span class="leader-l">Mais mortes</span><strong>{{ best('d')?.player?.nome ?? '—' }}</strong><span class="leader-v">{{ best('d')?.d ?? 0 }}</span></div>
-        <div class="leader"><span class="leader-l">Mais assistências</span><strong>{{ best('a')?.player?.nome ?? '—' }}</strong><span class="leader-v">{{ best('a')?.a ?? 0 }}</span></div>
-        <div class="leader"><span class="leader-l">Mais dano</span><strong>{{ best('dano')?.player?.nome ?? '—' }}</strong><span class="leader-v">{{ best('dano')?.dano ?? 0 }}</span></div>
-      </div>
-
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Jogador</th>
-              <th class="c">Jogos</th>
-              <th class="c">K</th>
-              <th class="c">D</th>
-              <th class="c">A</th>
-              <th class="c">KDA</th>
-              <th class="c">Dano</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (x of t.totals(); track x.player.id) {
-              <tr>
-                <td>{{ x.player.nome }}</td>
-                <td class="c">{{ x.jogos }}</td>
-                <td class="c num">{{ x.k }}</td>
-                <td class="c num">{{ x.d }}</td>
-                <td class="c num">{{ x.a }}</td>
-                <td class="c num">{{ kda(x) }}</td>
-                <td class="c num">{{ x.dano }}</td>
-              </tr>
-            } @empty {
-              <tr><td colspan="7"><p class="empty">Nenhum jogador cadastrado</p></td></tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </section>
-  }
 
   <footer class="foot">
     Fase de pontos · 10 partidas Bo1 · final Bo3

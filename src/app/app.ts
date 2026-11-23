@@ -1,23 +1,25 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { TournamentService } from './tournament/tournament.service';
-import { Elo, Match, PlayerStats, PlayerTotals, Role, Winner } from './tournament/tournament.models';
+import { Card, Draw, Elo, Role, Winner } from './tournament/tournament.models';
 
 const REGIAO = 'br1';
+const ROLE_KEY: Record<string, string> = { Topo: 'top', Selva: 'jungle', Meio: 'mid', Atirador: 'adc', Suporte: 'sup' };
+const ROLE_ICON: Record<string, string> = { Topo: '⚔', Selva: '🌿', Meio: '✦', Atirador: '🏹', Suporte: '✚' };
 
-const ROLE_KEY: Record<string, string> = {
-  Topo: 'top',
-  Selva: 'jungle',
-  Meio: 'mid',
-  Atirador: 'adc',
-  Suporte: 'sup',
-};
+const REEL_LEN = 36;
+const REEL_TARGET = 30;
+const CARD_STEP = 122; // largura da carta + espaço
+const CARD_HALF = 56;
 
-const ROLE_ICON: Record<string, string> = {
-  Topo: '⚔',
-  Selva: '🌿',
-  Meio: '✦',
-  Atirador: '🏹',
-  Suporte: '✚',
+type Stage = 'idle' | 'players' | 'card' | 'teams';
+
+const shuffle = <T>(arr: T[]): T[] => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 };
 
 @Component({
@@ -28,8 +30,17 @@ const ROLE_ICON: Record<string, string> = {
 export class App {
   readonly t = inject(TournamentService);
 
-  drawMsg = '';
-  addMsg = '';
+  readonly drawMsg = signal('');
+  readonly addMsg = signal('');
+  readonly savedMsg = signal('');
+
+  readonly stage = signal<Stage>('idle');
+  readonly spin = signal<string[]>([]);
+  readonly reelItems = signal<Card[]>([]);
+  readonly reelX = signal(0);
+  readonly reelGo = signal(false);
+
+  private timers: ReturnType<typeof setTimeout>[] = [];
 
   readonly bench = computed(() => {
     const d = this.t.current();
@@ -38,18 +49,13 @@ export class App {
     return this.t.players().filter(p => !used.has(p.id));
   });
 
-  readonly matchesReversed = computed(() => [...this.t.matches()].reverse());
-
   readonly leader = computed(() => {
     const s = this.t.standings();
     if (!s.length || !this.t.matches().length) return '—';
     return s[0].player.nome.split(' ')[0];
   });
 
-  readonly coolingIds = computed(() => {
-    const last = this.t.matches().slice(-3);
-    return new Set(last.map(m => m.card.id));
-  });
+  readonly coolingIds = computed(() => new Set(this.t.matches().slice(-3).map(m => m.card.id)));
 
   isCooling(cardId: string): boolean {
     return this.coolingIds().has(cardId);
@@ -67,18 +73,105 @@ export class App {
     return i < 3 && this.t.matches().length ? `g${i + 1}` : '';
   }
 
+  tile(id: string): string {
+    return `https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/${id}_0.jpg`;
+  }
+
+  delay(i: number, extra = 0): string {
+    return `${i * 120 + extra}ms`;
+  }
+
+  name(id: string): string {
+    return this.t.players().find(p => p.id === id)?.nome ?? '?';
+  }
+
+  // ---------- sorteio com animação ----------
+
+  draw(): void {
+    const n = this.t.players().length;
+    if (n < 10) {
+      this.drawMsg.set(`Precisa de 10 jogadores cadastrados (há ${n}).`);
+      return;
+    }
+    if (!this.t.cards().length) {
+      this.drawMsg.set('Cadastre ou carregue as cartas.');
+      return;
+    }
+    this.clearTimers();
+    const d = this.t.draw();
+    if (!d) return;
+    this.drawMsg.set(d.card.draft && !this.t.champPool().length ? 'Campeões não carregaram: o draft sai sem campeões.' : '');
+    this.stage.set('players');
+    this.spinPlayers(d);
+  }
+
+  private spinPlayers(d: Draw): void {
+    const ids = this.t.players().map(p => p.id);
+    const finalIds = [...d.teamA, ...d.teamB];
+    const delays = [60, 60, 60, 60, 60, 60, 60, 60, 70, 70, 80, 90, 100, 120, 140, 170, 210, 260, 320];
+    let step = 0;
+    const tick = () => {
+      if (step < delays.length) {
+        this.spin.set(shuffle(ids).slice(0, 10));
+        this.later(delays[step++], tick);
+      } else {
+        this.spin.set(finalIds);
+        this.later(900, () => this.spinCard(d));
+      }
+    };
+    tick();
+  }
+
+  private spinCard(d: Draw): void {
+    const pool = this.t.cards();
+    const items = Array.from({ length: REEL_LEN }, (_, i) =>
+      i === REEL_TARGET ? d.card : pool[(i * 7 + 3) % pool.length]
+    );
+    this.reelItems.set(items);
+    this.reelGo.set(false);
+    this.reelX.set(0);
+    this.stage.set('card');
+    this.later(80, () => {
+      this.reelGo.set(true);
+      this.reelX.set(-(REEL_TARGET * CARD_STEP + CARD_HALF));
+    });
+    this.later(3900, () => this.stage.set('teams'));
+  }
+
+  private later(ms: number, fn: () => void): void {
+    this.timers.push(setTimeout(fn, ms));
+  }
+
+  private clearTimers(): void {
+    this.timers.forEach(clearTimeout);
+    this.timers = [];
+  }
+
+  swap(oldId: string, newId: string): void {
+    this.t.swapPlayer(oldId, newId);
+  }
+
+  save(winner: Winner): void {
+    this.clearTimers();
+    this.t.saveMatch(winner);
+    this.stage.set('idle');
+    this.drawMsg.set('');
+  }
+
+  // ---------- cadastro ----------
+
   async addPlayer(nomeEl: HTMLInputElement, riotEl: HTMLInputElement): Promise<void> {
     const riot = riotEl.value.trim();
-    this.addMsg = '';
+    this.addMsg.set('');
     if (riot) {
       if (!riot.includes('#')) {
-        this.addMsg = 'Riot ID inválido. Use o formato Nome#TAG.';
+        this.addMsg.set('Riot ID inválido. Use o formato Nome#TAG.');
         return;
       }
-      this.addMsg = 'Buscando na Riot…';
+      this.addMsg.set('Buscando na Riot…');
       const info = await this.fetchRiot(riot);
       if (!info) {
-        this.addMsg = 'Riot ID não encontrado.';
+        this.addMsg.set('Riot ID não encontrado.');
         return;
       }
       this.t.addPlayer(info.nome, info.riotId, info.elo);
@@ -87,7 +180,7 @@ export class App {
     }
     nomeEl.value = '';
     riotEl.value = '';
-    this.addMsg = '';
+    this.addMsg.set('');
     riotEl.focus();
   }
 
@@ -106,52 +199,6 @@ export class App {
     }
   }
 
-  savedMsg = '';
-
-  saveNow(): void {
-    this.t.saveNow();
-    this.savedMsg = `Salvo às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-  }
-
-  reset(): void {
-    if (confirm('Apagar jogadores, cartas e partidas salvos?')) {
-      this.t.reset();
-      this.savedMsg = '';
-    }
-  }
-
-  tab: 'torneio' | 'historico' | 'estatisticas' = 'torneio';
-
-  stat(m: Match, id: string, f: keyof PlayerStats): number {
-    return m.stats?.[id]?.[f] ?? 0;
-  }
-
-  setStat(matchId: string, id: string, f: keyof PlayerStats, v: string): void {
-    this.t.setStat(matchId, id, f, Number(v) || 0);
-  }
-
-  best(f: keyof PlayerStats): PlayerTotals | null {
-    let top: PlayerTotals | null = null;
-    for (const x of this.t.totals()) {
-      if (x[f] > 0 && (!top || x[f] > top[f])) top = x;
-    }
-    return top;
-  }
-
-  kda(x: PlayerTotals): string {
-    return x.d ? ((x.k + x.a) / x.d).toFixed(2) : (x.k + x.a).toFixed(2);
-  }
-
-  fmtDate(ts: number): string {
-    return new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  }
-
-  eloLabel(e: Elo): string {
-    if (!e.tier) return 'Sem ranqueada solo';
-    const rank = e.rank ? ` ${e.rank}` : '';
-    return `${e.tier}${rank} · ${e.lp ?? 0} PDL · ${e.vitorias}V ${e.derrotas}D`;
-  }
-
   addCard(nome: HTMLInputElement, desc: HTMLInputElement): void {
     this.t.addCard(nome.value, desc.value);
     nome.value = '';
@@ -159,38 +206,23 @@ export class App {
     nome.focus();
   }
 
-  draw(): void {
-    const n = this.t.players().length;
-    if (n < 10) {
-      this.drawMsg = `Precisa de 10 jogadores cadastrados (há ${n}).`;
-      return;
+  saveNow(): void {
+    this.t.saveNow();
+    this.savedMsg.set(`Salvo às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
+  }
+
+  reset(): void {
+    if (confirm('Apagar jogadores, cartas e partidas salvos?')) {
+      this.clearTimers();
+      this.t.reset();
+      this.stage.set('idle');
+      this.savedMsg.set('');
     }
-    if (!this.t.cards().length) {
-      this.drawMsg = 'Cadastre ou carregue as cartas.';
-      return;
-    }
-    this.drawMsg = n > 10 ? `Sorteados 10 de ${n} jogadores.` : '';
-    this.t.draw();
   }
 
-  swap(oldId: string, newId: string): void {
-    this.t.swapPlayer(oldId, newId);
-  }
-
-  save(winner: Winner): void {
-    this.t.saveMatch(winner);
-    this.drawMsg = '';
-  }
-
-  name(id: string): string {
-    return this.t.players().find(p => p.id === id)?.nome ?? '?';
-  }
-
-  teamNames(ids: string[]): string {
-    return ids.map(id => this.name(id)).join(' · ');
-  }
-
-  winnerLabel(m: Match, side: Winner): string {
-    return m.winner === side ? 'venceu' : 'perdeu';
+  eloLabel(e: Elo): string {
+    if (!e.tier) return 'Sem ranqueada solo';
+    const rank = e.rank ? ` ${e.rank}` : '';
+    return `${e.tier}${rank} · ${e.lp ?? 0} PDL · ${e.vitorias}V ${e.derrotas}D`;
   }
 }

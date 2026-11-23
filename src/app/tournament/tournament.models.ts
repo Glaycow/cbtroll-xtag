@@ -20,6 +20,13 @@ export interface Card {
   id: string;
   nome: string;
   desc: string;
+  draft?: boolean;
+}
+
+export interface Champ {
+  id: string;
+  nome: string;
+  tags: string[];
 }
 
 export interface Draw {
@@ -29,18 +36,7 @@ export interface Draw {
   card: Card;
   captainA?: string;
   captainB?: string;
-}
-
-export interface PlayerStats {
-  k: number;
-  d: number;
-  a: number;
-  dano: number;
-}
-
-export interface PlayerTotals extends PlayerStats {
-  player: Player;
-  jogos: number;
+  champions?: Record<string, Champ>;
 }
 
 export interface Match extends Draw {
@@ -48,7 +44,6 @@ export interface Match extends Draw {
   ts: number;
   cardId: string;
   winner: Winner;
-  stats?: Record<string, PlayerStats>;
 }
 
 export interface Standing {
