@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
 import { Card, Champ, Draw, Elo, Match, Player, Role, Standing, Winner } from './tournament.models';
+import { CHAMP_ROLES } from './champion-roles';
 
 export const ROLES: Role[] = ['Topo', 'Selva', 'Meio', 'Atirador', 'Suporte'];
 export const PLAYERS_PER_MATCH = 10;
@@ -270,8 +271,9 @@ export class TournamentService {
     const out: Record<string, Champ> = {};
     for (const [pid, role] of Object.entries(roles)) {
       const free = pool.filter(c => !used.has(c.id));
-      const pref = free.filter(c => c.tags.some(t => ROLE_TAGS[role].includes(t)));
-      const list = pref.length ? pref : free;
+      const byRole = free.filter(c => CHAMP_ROLES[c.id]?.includes(role));
+      const byTags = free.filter(c => c.tags.some(t => ROLE_TAGS[role].includes(t)));
+      const list = byRole.length ? byRole : byTags.length ? byTags : free;
       const c = list[Math.floor(Math.random() * list.length)];
       used.add(c.id);
       out[pid] = c;
